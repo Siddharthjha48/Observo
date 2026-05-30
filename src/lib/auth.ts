@@ -1,8 +1,30 @@
 import { currentUser } from '@clerk/nextjs/server';
+import { cookies } from 'next/headers';
 import prisma from './prisma';
 
 export async function getOrCreateDbUser() {
   try {
+    // 1. Admin Session Cookie Bypass
+    const cookieStore = await cookies();
+    const adminSession = cookieStore.get('admin_session')?.value;
+    if (adminSession === 'siddharth_admin_active_session') {
+      let adminUser = await prisma.user.findUnique({
+        where: { clerkId: 'admin_siddharth' },
+      });
+
+      if (!adminUser) {
+        adminUser = await prisma.user.create({
+          data: {
+            clerkId: 'admin_siddharth',
+            email: 'siddharth@observo.dev',
+            name: 'Siddharth (Admin)',
+            plan: 'PRO',
+          },
+        });
+      }
+      return adminUser;
+    }
+
     const secretKey = process.env.CLERK_SECRET_KEY;
     const isPlaceholder = !secretKey || secretKey.startsWith('sk_test_...') || secretKey === '...';
 

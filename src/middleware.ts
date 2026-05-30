@@ -7,7 +7,9 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
   '/api/ping/(.*)',
   '/api/webhooks/(.*)',
-  '/api/cron/(.*)'
+  '/api/cron/(.*)',
+  '/admin-login(.*)',
+  '/api/admin/(.*)'
 ]);
 
 export default function middleware(req: any, event: any) {
