@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  clerkId       String    @unique
+  email         String    @unique
+  name          String?
+  plan          Plan      @default(FREE)
+  stripeCustomerId String?
+  apiKey        String    @unique @default(cuid())
+  createdAt     DateTime  @default(now())
+  monitors      Monitor[]
+  cronJobs      CronJob[]
+  incidents     Incident[]
+  alertChannels AlertChannel[]
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+model Monitor {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  url           String
+  method        String    @default("GET")
+  interval      Int       @default(10) // minutes
+  timeout       Int       @default(30) // seconds
+  expectedStatus Int      @default(200)
+  maxResponseTime Int     @default(2000) // ms
+  isActive      Boolean   @default(true)
+  status        MonitorStatus @default(UNKNOWN)
+  lastCheckedAt DateTime?
+  lastResponseTime Int?   // ms
+  uptimePercent Float?
+  createdAt     DateTime  @default(now())
+  checks        MonitorCheck[]
+  incidents     Incident[]
+}
+
+enum MonitorStatus {
+  UP
+  DOWN
+  DEGRADED
+  UNKNOWN
+}
+
+model MonitorCheck {
+  id            String    @id @default(cuid())
+  monitorId     String
+  monitor       Monitor   @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  status        MonitorStatus
+  responseTime  Int?      // ms
+  statusCode    Int?
+  error         String?
+  checkedAt     DateTime  @default(now())
+}
+
+model CronJob {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  slug          String    @unique @default(cuid())
+  expectedInterval Int   // minutes
+  gracePeriod   Int       @default(10) // extra minutes before alert fires
+  isActive      Boolean   @default(true)
+  status        CronStatus @default(WAITING)
+  lastPingAt    DateTime?
+  createdAt     DateTime  @default(now())
+  pings         CronPing[]
+  incidents     Incident[]
+}
+
+enum CronStatus {
+  HEALTHY
+  MISSED
+  WAITING
+}
+
+model CronPing {
+  id        String   @id @default(cuid())
+  cronJobId String
+  cronJob   CronJob  @relation(fields: [cronJobId], references: [id], onDelete: Cascade)
+  pingAt    DateTime @default(now())
+  note      String?
+}
+
+model Incident {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitorId   String?
+  monitor     Monitor?  @relation(fields: [monitorId], references: [id])
+  cronJobId   String?
+  cronJob     CronJob?  @relation(fields: [cronJobId], references: [id])
+  type        IncidentType
+  title       String
+  description String?
+  status      IncidentStatus @default(OPEN)
+  startedAt   DateTime  @default(now())
+  resolvedAt  DateTime?
+  duration    Int?      // seconds
+}
+
+enum IncidentType {
+  DOWN
+  DEGRADED
+  CRON_MISSED
+}
+
+enum IncidentStatus {
+  OPEN
+  RESOLVED
+}
+
+model AlertChannel {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      ChannelType
+  name      String
+  config    Json        // { webhookUrl, email, etc }
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+}
+
+enum ChannelType {
+  DISCORD
+  SLACK
+  EMAIL
+}
