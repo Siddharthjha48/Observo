@@ -12,7 +12,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/admin/(.*)'
 ]);
 
-export default function middleware(req: any, event: any) {
+export default function proxy(req: any, event: any) {
   const secretKey = process.env.CLERK_SECRET_KEY;
   const isPlaceholder = !secretKey || secretKey.startsWith('sk_test_...') || secretKey === '...';
 
